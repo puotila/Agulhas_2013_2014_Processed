@@ -37,38 +37,40 @@ class Antload(object):
         self.y     = [] # closest model grid index (ix,iy)
         self.vname = 'sit' # sea ice thickness
 
-    def readMatFile(self,filename):
+    def selectData(self,vname,raw,pro):
+        """ Select valid values by masking out invalid ones
+        """
+        out = np.ma.masked_where((pro['selectgoodth']==0)|\
+                                 (pro['selectrammings']==1)|\
+                                 (raw['Lamp']<=1170)|\
+                                 (raw['Hice2']<0),\
+                                  raw[vname])
+        return out
+
+    def getSegment(self,vari,pro,func=np.ma.mean,segkey='segments100m'):
+        out = np.ma.array([func(vari[pro[segkey][i][0]:pro[segkey][i][1]]) \
+                                            for i in range(pro[segkey].shape[0])])
+        return out[np.where(out.mask==False)]
+
+    def readMatFile(self,fidx):
         date0 = datetime(1970,1,1,0) # UTC
-        raw  = loadmat(filename)
-        # consider ice thicknesses greater than 3m unrealiable
-        idx = np.where((raw['Hice'][:]>0.)&(raw['Hice'][:]<=3.))[0]
-        self.data = raw['Hice'][idx][:,0]
-        self.lat = raw['Latitude'][idx][:,0]
-        self.lon = raw['Longitude'][idx][:,0]
-        time = raw['Timestamp'][idx][:,0]
+        raw  = loadmat("mittaus%02d.mat" % fidx)
+        pro  = loadmat("processed%d.mat" % fidx)
+        hice2 = self.selectData('Hice2',raw,pro)
+        lat = self.selectData('Latitude',raw,pro)
+        lon = self.selectData('Longitude',raw,pro)
+        timestamp = self.selectData('Timestamp',raw,pro)
+        # average valid data in 100m segments
+        self.data = self.getSegment(hice2,pro)
+        self.lat = self.getSegment(lat,pro)
+        self.lon = self.getSegment(lon,pro)
+        time = self.getSegment(timestamp,pro)
         self.dates = [date0 + timedelta(t/86400,t%86400) for t in time]
         min_i = gi.nearest_neighbour_indices(self.lon,self.lat,\
                                        self.grdlon,self.grdlat,\
                                                self.gx,self.gy,\
                                                   len(self.lon))
         self.x, self.y = min_i[:,0]-1, min_i[:,1]-1
-        #for c,i in enumerate(idx):
-        #    if c%1000.==0:
-        #        print "%5.1f percent processed" % \
-        #             (100*float(i)/len(raw['Timestamp']))
-        #        sys.stdout.flush()
-        #    lon, lat = self.lon[c], self.lat[c]
-            # f90 should be fast
-        #    self.xy.append(min_i)
-            # closest model orca025 grid point
-            #dst   = self.haversine(self.grdlon,self.grdlat,lon,lat)
-            #min_i = np.where(dst==np.min(dst))
-            #self.x.append(min_i[0][0])
-            #self.y.append(min_i[1][0])
-
-    def readFiles(self,fpat='mittaus*.mat'):
-        for fn in sorted(glob.glob(fpat)):
-            self.readMatFile(fn)
 
     def readModelGrid(self,lat_lim=-55.,\
                       grdfile="coordinates_ORCA025.nc"):
@@ -82,19 +84,18 @@ class Antload(object):
         self.gx, self.gy = self.grdlon.shape
 
 if __name__ == "__main__":
-    #for fn in sorted(glob.glob('mittaus*.mat')):
-    fn = sys.argv[1]
-    cgzfile = "%s.cpickle.gz" % fn
+    fidx = int(sys.argv[1])
+    cgzfile = "antload%02d.cpickle.gz" % fidx
     antload = Antload()
     antload.readModelGrid()
     if not os.path.exists(cgzfile):
-        sys.stdout.write("Starting %s ...\n" % fn)
+        sys.stdout.write("Starting %02d ...\n" % fidx)
         sys.stdout.flush()
-        antload.readMatFile(fn)
+        antload.readMatFile(fidx)
         # save
         save_zipped_pickle(antload,cgzfile)
     # load
     antload = load_zipped_pickle(cgzfile)
-    sys.stdout.write("%s processed!\n" % fn)
+    sys.stdout.write("%s processed!\n" % fidx)
     sys.stdout.flush()
     print "Finnished!"

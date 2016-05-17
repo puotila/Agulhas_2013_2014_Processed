@@ -38,7 +38,7 @@ class obsIceThickDistr(Antload):
             sys.exit(0)
         self.initNetCDF(fno)
 
-    def initNetCDF(self,fno,fillValue=0):
+    def initNetCDF(self,fno,fillValue=-1.e+20):
         today = datetime.today()
         fp = nc.Dataset(fno,'w')
         setattr(fp,'history',"Created by <petteri.uotila@fmi.fi> on %s by %s." % \
@@ -101,7 +101,7 @@ class obsIceThickDistr(Antload):
                 time[it] = self.cdftime.date2num(prevdate)
                 sitd[it] = cnts
                 self.fp.sync()
-                print "Stored timestep=%d, max(cnt)=%d" % (it,cnts.max())
+                print "Stored timestep=%d, sum(cnt)=%d" % (it,cnts.sum())
                 # new time step
                 it += 1
                 cnts = np.zeros((self.ncatice,self.gx,self.gy),dtype='i')
@@ -112,13 +112,14 @@ class obsIceThickDistr(Antload):
             cnts[icat-1,emo.x[i],emo.y[i]] += 1
             prevdate = date
         # store values if the last file
-        #if lastFile:
         time[it] = self.cdftime.date2num(date)
         sitd[it] = cnts
         self.fp.sync()
-        print "Stored timestep=%d, max(cnt)=%d" % (it,cnts.max())
+        print "Stored timestep=%d, sum(cnt)=%d" % (it,cnts.sum())
         # store the last date in the input file
         self.prevdate = date
+        if lastFile:
+            sitd[:] = np.ma.masked_equal(sitd[:],0)
 
 if __name__ == "__main__":
     sit = obsIceThickDistr('antload_1m_sitd.nc')
@@ -128,7 +129,7 @@ if __name__ == "__main__":
     for fn in fns:
         if fn==fns[-1]:
             lastFile = True
-        if fn in ['mittaus14.mat.cpickle.gz']:
+        if fn in ['mittaus14.mat.cpickle.gz','mittaus17.mat.cpickle.gz']:
             yoffset = 1 # timestamp has a wrong year (2013 not 2014)
         else:
             yoffset = 0
