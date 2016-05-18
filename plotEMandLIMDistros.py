@@ -4,9 +4,11 @@ Simple plotting of one grid cell ice thickness distributions, observed and
 modelled. Might evolve to something bigger.
 """
 
+import sys
 import numpy as np
 import netCDF4 as nc
 import matplotlib.pylab as plt
+from matplotlib import colors
 from scipy.stats import ks_2samp
 
 class LIM3SITD(object):
@@ -65,6 +67,23 @@ class PlotObsMods(object):
         ax.set_title("%s, %5.1f E,%4.1f N" % (title,plon,plat))
         plt.savefig('sitd_%s_y%d_x%d.png' % (title.replace(' ','_'),iy,ix))
 
+    def mapPlot(self,fld,title='p-values Jan 2014'):
+        from mpl_toolkits.basemap import Basemap
+        m = Basemap(width=600000,height=600000,\
+                    projection='laea',resolution='h',\
+                    lat_ts=-69,lat_0=-69,lon_0=-6.)
+        x,y = m(self.obs.lon,self.obs.lat)
+        fig = plt.figure()
+        ax = fig.add_subplot(1,1,1)
+        bounds = np.array([0, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 1])
+        norm = colors.BoundaryNorm(boundaries=bounds, ncolors=256)
+        m.pcolormesh(x,y,pvals,norm=norm,cmap=plt.get_cmap('RdYlGn'))
+        m.drawcoastlines()
+        m.drawmeridians(np.arange(-30,14,4),labels=[0,0,0,1])
+        m.drawparallels(np.arange(-70,-50,2),labels=[1,0,0,0])
+        m.colorbar()
+        plt.savefig('map_%s.png' % title.replace(' ','_'))
+
 if __name__ == "__main__":
     fon = 'antload_1m_sitd.nc'
     imonths = [1,2] # Jan and early Feb 2014
@@ -83,6 +102,10 @@ if __name__ == "__main__":
                                           limdata.siconcat[:-1,iy,ix])
     # plotting
     ompl = PlotObsMods(emdata,limdata)
+    # pvals on map
+    ompl.mapPlot(pvals)
+    sys.exit(0)
+    # sitd plots
     iy, ix = 108, 1123 # (where pval is high)
     ompl.plotSITD(iy,ix)
     iy, ix = 94, 1118 # (where pval is low)
