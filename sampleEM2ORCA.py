@@ -123,13 +123,13 @@ class obsIceThickDistr(Antload):
 
 if __name__ == "__main__":
     sit = obsIceThickDistr('antload_1m_sitd.nc')
-    fns = sorted(glob.glob('mittaus*.mat.cpickle.gz'))
+    fns = sorted(glob.glob('antload??.cpickle.gz'))
     #fns = ['mittaus13.mat.cpickle.gz','mittaus14.mat.cpickle.gz']
     lastFile = False
     for fn in fns:
         if fn==fns[-1]:
             lastFile = True
-        if fn in ['mittaus14.mat.cpickle.gz','mittaus17.mat.cpickle.gz']:
+        if fn in ['antload17.cpickle.gz']:
             yoffset = 1 # timestamp has a wrong year (2013 not 2014)
         else:
             yoffset = 0

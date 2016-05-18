@@ -62,6 +62,9 @@ class Antload(object):
         timestamp = self.selectData('Timestamp',raw,pro)
         # average valid data in 100m segments
         self.data = self.getSegment(hice2,pro)
+        if len(self.data)==0:
+            print "No valid segments!"
+            sys.exit(0)
         self.lat = self.getSegment(lat,pro)
         self.lon = self.getSegment(lon,pro)
         time = self.getSegment(timestamp,pro)
