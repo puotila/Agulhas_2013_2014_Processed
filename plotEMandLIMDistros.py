@@ -17,10 +17,25 @@ class LIM3SITD(object):
         """
         fp = nc.Dataset(fn)
         siconcat = np.ma.array(fp.variables['siconcat'][tidx])
+        sithicat = np.ma.array(fp.variables['sithicat'][tidx])
+        snthicat = np.ma.array(fp.variables['snthicat'][tidx])
+        sinthicat = sithicat + snthicat # ice + snow thickness
+        # used category thickness as sithicat + snthicat as EM sees the ice
+        # adjust category bounds back so that they correspod to ice thickness
+        # category bounds
+        siconcatEM = np.ma.zeros(siconcat.shape)
+        # first category
+        siconcatEM[0] = siconcat[0]*sithicat[0]/sinthicat[0]
+        # 2..N-1 categories
+        siconcatEM[1:-1] = np.ma.array([siconcat[i]*\
+                                       (snthicat[i-1]+sithicat[i])/sinthicat[i] \
+                                        for i in range(1,len(siconcat)-1)])
+        # Nth category
+        siconcatEM[-1] = siconcat[-1]*(snthicat[-2]+snthicat[-1]+sithicat[-1])/sinthicat[-1]
         # normalise sitd so that its sum per grid cell is one
         # effectively convert volume to thickness
-        self.siconcat = np.ma.array([siconcat[i,:,:]/np.sum(siconcat,axis=0) \
-                                     for i in range(siconcat.shape[0])])
+        self.siconcat = np.ma.array([siconcatEM[i,:,:]/np.sum(siconcatEM,axis=0) \
+                                     for i in range(siconcatEM.shape[0])])
         self.lat = np.array(fp.variables['nav_lat'])
         self.lon = np.array(fp.variables['nav_lon'])
         fp.close()
@@ -61,6 +76,7 @@ class PlotObsMods(object):
         ax = fig.add_subplot(1,1,1)
         lnes = ax.plot(obs.hicats,hiobs,obs.hicats,himod,drawstyle='steps-pre',lw=2)
         ax.set_xticks(obs.hicats)
+        ax.set_xlim(0,5)
         ax.set_xlabel('ice thickness [m]')
         ax.set_ylabel('ice concentraion [0-1]')
         ax.legend(lnes,("obs, <%4.2f m>" % mhiobs,"model, <%4.2f m>" % mhimod))
@@ -77,7 +93,7 @@ class PlotObsMods(object):
         ax = fig.add_subplot(1,1,1)
         bounds = np.array([0, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 1])
         norm = colors.BoundaryNorm(boundaries=bounds, ncolors=256)
-        m.pcolormesh(x,y,pvals,norm=norm,cmap=plt.get_cmap('RdYlGn'))
+        m.pcolormesh(x,y,fld,norm=norm,cmap=plt.get_cmap('RdYlGn'))
         m.drawcoastlines()
         m.drawmeridians(np.arange(-30,14,4),labels=[0,0,0,1])
         m.drawparallels(np.arange(-70,-50,2),labels=[1,0,0,0])
@@ -102,9 +118,6 @@ if __name__ == "__main__":
                                           limdata.siconcat[:-1,iy,ix])
     # plotting
     ompl = PlotObsMods(emdata,limdata)
-    # pvals on map
-    ompl.mapPlot(pvals)
-    sys.exit(0)
     # sitd plots
     iy, ix = 108, 1123 # (where pval is high)
     ompl.plotSITD(iy,ix)
