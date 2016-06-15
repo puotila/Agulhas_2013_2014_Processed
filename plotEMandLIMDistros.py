@@ -44,6 +44,8 @@ class EMSITD(object):
     def __init__(self,fn,tidx=0):
         fp = nc.Dataset(fn)
         sitd = np.ma.sum(fp.variables['sitd'][tidx,:,:,:],axis=0)
+        # number of processed 100m EM observations per grid cell
+        self.cnt = np.ma.sum(sitd,axis=0)
         # normalise sitd so that its sum per grid cell is one
         self.sitd = np.ma.array([sitd[i,:,:]/np.sum(sitd,axis=0) \
                                  for i in range(sitd.shape[0])])
@@ -67,6 +69,7 @@ class PlotObsMods(object):
         mod = self.mod
         plat = obs.lat[iy,ix]
         plon = obs.lon[iy,ix]
+        nobs = obs.cnt[iy,ix]
         hiobs = np.ma.hstack((obs.sitd[0,iy,ix],obs.sitd[:,iy,ix]))
         himod = np.ma.hstack((mod.siconcat[0,iy,ix],mod.siconcat[:,iy,ix]))
         # mean values (skip the last category):
@@ -80,7 +83,7 @@ class PlotObsMods(object):
         ax.set_xlabel('ice thickness [m]')
         ax.set_ylabel('ice concentraion [0-1]')
         ax.legend(lnes,("obs, <%4.2f m>" % mhiobs,"model, <%4.2f m>" % mhimod))
-        ax.set_title("%s, %5.1f E,%4.1f N" % (title,plon,plat))
+        ax.set_title("%s, %5.1f E,%4.1f N, N$_{obs}$=%d" % (title,plon,plat,nobs))
         plt.savefig('sitd_%s_y%d_x%d.png' % (title.replace(' ','_'),iy,ix))
 
     def mapPlot(self,fld,title='p-values Jan 2014'):
