@@ -70,16 +70,19 @@ class PlotObsMods(object):
         plat = obs.lat[iy,ix]
         plon = obs.lon[iy,ix]
         nobs = obs.cnt[iy,ix]
-        hiobs = np.ma.hstack((obs.sitd[0,iy,ix],obs.sitd[:,iy,ix]))
-        himod = np.ma.hstack((mod.siconcat[0,iy,ix],mod.siconcat[:,iy,ix]))
+        hiobs = obs.sitd[:,iy,ix]
+        himod = mod.siconcat[:,iy,ix]
         # mean values (skip the last category):
-        mhiobs = np.sum(obs.hicatmean[:-1]*hiobs[:-2])
-        mhimod = np.sum(obs.hicatmean[:-1]*himod[:-2])
+        mhiobs = np.ma.sum(obs.hicatmean[:-1]*hiobs[:-1])
+        mhimod = np.ma.sum(obs.hicatmean[:-1]*himod[:-1])
         fig = plt.figure()
         ax = fig.add_subplot(1,1,1)
-        lnes = ax.plot(obs.hicats,hiobs,obs.hicats,himod,drawstyle='steps-pre',lw=2)
+        x = np.ma.hstack((np.ma.hstack(([l for pair in zip(obs.hicats[:-1],obs.hicats[:-1]) for l in pair])),[5.]))
+        yobs = np.ma.hstack(([0.],[l for pair in zip(hiobs,hiobs) for l in pair]))
+        ymod = np.ma.hstack(([0.],[l for pair in zip(himod,himod) for l in pair]))
+        lnes = ax.plot(x,yobs,x,ymod,lw=2)
         ax.set_xticks(obs.hicats)
-        ax.set_xlim(0,5)
+        ax.set_xlim(-0.1,5.1)
         ax.set_xlabel('ice thickness [m]')
         ax.set_ylabel('ice concentraion [0-1]')
         ax.legend(lnes,("obs, <%4.2f m>" % mhiobs,"model, <%4.2f m>" % mhimod))
