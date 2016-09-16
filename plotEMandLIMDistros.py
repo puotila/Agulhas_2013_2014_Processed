@@ -84,7 +84,7 @@ class PlotObsMods(object):
         ax.set_xticks(obs.hicats)
         ax.set_xlim(-0.1,5.1)
         ax.set_xlabel('ice thickness [m]')
-        ax.set_ylabel('ice concentraion [0-1]')
+        ax.set_ylabel('ice concentration [0-1]')
         ax.legend(lnes,("obs, <%4.2f m>" % mhiobs,"model, <%4.2f m>" % mhimod))
         ax.set_title("%s, %5.1f E,%4.1f N, N$_{obs}$=%d" % (title,plon,plat,nobs))
         plt.savefig('sitd_%s_y%d_x%d.png' % (title.replace(' ','_'),iy,ix))
